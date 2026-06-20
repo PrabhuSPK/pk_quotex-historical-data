@@ -226,7 +226,8 @@ class Quotex:
         
         # Determine initial time boundary
         current_time = int(time.time())
-        chunk_offset = 3600 # Brokers generally use 3600 (1 hour chunks) for pagination
+        chunk_offset = 3600   # broker ignores offset — always returns 50 candles / 2940s
+        STEP = 2940           # exact seconds the broker steps back per chunk
         
         self.start_candles_stream(asset, period)
         
@@ -286,26 +287,15 @@ class Quotex:
                     all_candles[c['time']] = c
                     new_count += 1
             
-            # Update iterator anchor seamlessly
-            if len(raw_candles) == 0:
-                # We hit a genuine dead zone (weekend/market closed) with NO candles returned.
-                # If we break, we stop fetching forever. Instead, we manually step back to jump the gap.
-                oldest_time -= chunk_offset
-            else:
-                times = sorted([c['time'] for c in raw_candles])
-                # If broker returned exactly 1 duplicate candle or something older, ensure we move backward
-                if times[0] >= oldest_time:
-                    oldest_time -= chunk_offset
-                else:
-                    oldest_time = times[0]
+            # Step back by exactly 2940s — broker always returns exactly this window
+            oldest_time -= STEP
 
             # Report progress to caller if callback provided
             if progress_callback:
                 fetched_seconds = current_time - oldest_time
                 progress_callback(fetched_seconds, amount_of_seconds, len(all_candles))
 
-            # Minor anti-rate-limit throttle
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(0.05)
             
         # Return cleanly sorted comprehensive chain
         return sorted(all_candles.values(), key=lambda x: x['time'])

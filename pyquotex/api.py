@@ -453,7 +453,6 @@ class QuotexAPI:
             "suppress_origin": True,
             "ping_interval": 24,
             "ping_timeout": 20,
-            "ping_payload": "2",
             "origin": self.https_url,
             "host": f"ws2.{self.host}",
             "sslopt": {
